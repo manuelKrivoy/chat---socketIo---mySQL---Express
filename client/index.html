@@ -6,23 +6,50 @@
     <title>LifeTime Chat</title>
     <script type="module">
       import { io } from "https://cdn.socket.io/4.4.1/socket.io.esm.min.js";
-      const form = document.getElementById('form');
-      const input = document.getElementById('input');
-      const messages = document.getElementById('messages');
-      const socket = io();
-      socket.on('chat message',(msg)=>{
-        const item = `<li>${msg}</li>`
-        messages.insertAdjacentHTML('beforeend',item);
-      })
 
-      form.addEventListener('submit',(e)=>{ //Cuando se apreta enviar
-        e.preventDefault(); //previene el comportamiento por defecto del evento (recargar la pagina)
-        if(input.value){
-            socket.emit('chat message',input.value); //Se crea un chat message con el valor del input
-            input.value=''; //Restablece el valor del input luego de enviar el msj
+      const getUsername = async () => {
+        const username = localStorage.getItem("username");
+        if (username) {
+          console.log(`User existed ${username}`);
+          return username;
         }
-      })
 
+        const res = await fetch(
+          "https://random-data-api.com/api/users/random_user"
+        );
+        const { username: randomUsername } = await res.json();
+
+        localStorage.setItem("username", randomUsername);
+        return randomUsername;
+      };
+
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+      const socket = io({
+        auth: {
+          username: await getUsername(),
+          serverOffset: 0,
+        },
+      });
+      socket.on('chat message', (msg, username) => {
+      const item = `<li>
+        <p>${msg}</p>
+        <small>${username}</small>
+      </li>`
+      messages.insertAdjacentHTML('beforeend', item)
+      // scroll to bottom of messages
+      messages.scrollTop = messages.scrollHeight;
+    })
+
+      form.addEventListener("submit", (e) => {
+        //Cuando se apreta enviar
+        e.preventDefault(); //previene el comportamiento por defecto del evento (recargar la pagina)
+        if (input.value) {
+          socket.emit("chat message", input.value); //Se crea un chat message con el valor del input
+          input.value = ""; //Restablece el valor del input luego de enviar el msj
+        }
+      });
     </script>
     <style>
       *,
@@ -59,21 +86,22 @@
       }
 
       #messages {
-      list-style-type: none;
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      scroll-behavior: smooth;
-      padding-bottom: 48px;
-    }
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-y: scroll;
+        scroll-behavior: smooth;
+        padding-bottom: 48px;
+      }
 
-    #messages>li {
-      padding: .5rem 1rem;
-    }
+      #messages > li {
+        padding: 0.5rem 1rem;
+      }
 
-    #messages>li:nth-child(odd) {
-      background: #205461;
-    }
+      #messages > li:nth-child(odd) {
+        background: #205461;
+      }
 
       #form {
         bottom: 0;

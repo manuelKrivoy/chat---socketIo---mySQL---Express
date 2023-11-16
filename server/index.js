@@ -21,7 +21,9 @@ async function createMessagesTable(connection) {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTO_INCREMENT,
-      content VARCHAR(256)
+      content VARCHAR(256),
+      user VARCHAR(256)
+
     )
   `;
   await connection.execute(createTableQuery);
@@ -44,26 +46,34 @@ async function connectToDatabase() {
   }
 }
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   console.log("A user has connected!");
+
+
+
 
   socket.on("disconnect", () => {
     console.log("A user has disconnected");
   });
 
   socket.on("chat message", async (msg) => {
+    let result;
     try {
-      io.emit("chat message", msg);
-
+      const username =  socket.handshake.auth.username;
+      console.log("USER: ", username);
       const connection = await connectToDatabase();
-
-      const insertMessageQuery = "INSERT INTO messages (content) VALUES (?)";
-      await connection.execute(insertMessageQuery, [msg]);
+      const insertMessageQuery = "INSERT INTO messages (content, user) VALUES (?, ?)";
+      result = await connection.execute(insertMessageQuery, [msg, username]);
+      io.emit("chat message", msg,username);
       console.log("Message saved:", msg);
     } catch (error) {
       console.error("Error al insertar el mensaje en la base de datos:", error);
     }
   });
+  
+
+
+
 });
 
 app.use(logger("dev"));
